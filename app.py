@@ -48,14 +48,44 @@ def setup_request():
 def server_static(filename):
     return static_file(filename, root='./static')
 
+def login_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'username' in request.session:
+            return f(*args, **kwargs)
+        else:
+            redirect('/login')
+    return wrap
+	
 @route('/')
 def index(db):
-        return template('index_open')
+    result = db.query(article)
+    articles = []
+    for i in result:
+        articles.append({'title': i.title, 'body': i.body, 'author': i.author,'id': i.id })
+
+    #shuffle list
+    random.shuffle(articles)
+
+    if 'username' in request.session:
+        current_username = request.session['username']
+        return template('index', username=current_username, articles = articles)
+    else:
+        return template('index_open', articles=articles)
 
 @route('/login')
 def login():
     return template('login')
 
+@route('/admin')
+@login_required
+def admin():
+    name = request.session['username']
+    if name != 'reed':
+        redirect('/')
+
+    return template('admin', name=name)
+	
 @route('/login', method='POST')
 def do_login(db):
     username = request.forms.get('username')
@@ -71,7 +101,10 @@ def do_login(db):
         redirect('/login')
 
 @route('/logout')
+@login_required
 def logout():
     if 'username' in request.session:
         request.session.delete()
         redirect('/login')
+		
+bottle.run(app=app, reloader=True, debug=True)
