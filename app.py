@@ -44,10 +44,6 @@ class article(Base):
 def setup_request():
     request.session = request.environ['beaker.session']
 
-@route('/static/<filename>')
-def server_static(filename):
-    return static_file(filename, root='./static')
-
 def login_required(f):
     @wraps(f)
     def wrap(*args, **kwargs):
@@ -56,7 +52,20 @@ def login_required(f):
         else:
             redirect('/login')
     return wrap
-	
+
+@route('/test')
+def test_db(db):
+    table_data = db.query(user)
+    res = []
+    for x in table_data:
+        res.append({'username':x.username })
+
+    return {'table_data': res}
+
+@route('/static/<filename>')
+def server_static(filename):
+    return static_file(filename, root='./static')
+
 @route('/')
 def index(db):
     result = db.query(article)
@@ -73,19 +82,31 @@ def index(db):
     else:
         return template('index_open', articles=articles)
 
+#admin adds writers
+@route('/add_writer', method='POST')
+@login_required
+def add_writer(db):
+    name1 = request.session['username']
+    if name1 != 'reed':
+        redirect('/')
+
+    name = request.forms.get('name')
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    #query to make sure no username exists
+    result = db.query(user).filter(user.username==username).first()
+    if result == None:
+        new_user = user(name=name, username=username, password=password)
+        db.add(new_user)
+        db.commit()
+        return template('notification', message='New writer added successfully', username=name1)
+    else:
+        return template('notification', message='Username already in use. Choose another', username=name1)
+
 @route('/login')
 def login():
     return template('login')
 
-@route('/admin')
-@login_required
-def admin():
-    name = request.session['username']
-    if name != 'reed':
-        redirect('/')
-
-    return template('admin', name=name)
-	
 @route('/login', method='POST')
 def do_login(db):
     username = request.forms.get('username')
@@ -100,11 +121,72 @@ def do_login(db):
     else:
         redirect('/login')
 
-@route('/logout')
+
+@route('/admin')
 @login_required
+def admin():
+    name = request.session['username']
+    if name != 'reed':
+        redirect('/')
+
+    return template('admin', name=name)
+
+@route('/view/article/<id:int>')
+def view_article(id, db):
+    result = db.query(article).filter(article.id==id).first()
+    return template('view_article', article=result)
+
+#route for creating new articles
+@route('/new/article')
+@login_required
+def new_article():
+    current_username = request.session['username']
+    return template('create_new', username=current_username)
+
+@route('/new/article', method='POST')
+@login_required
+def add_new_article(db):
+    title = request.forms.get('title')
+    body = request.forms.get('body')
+    author = request.session['username']
+    new_article = article(title=title, body=body, author=author)
+    db.add(new_article)
+    db.commit()
+    redirect('/')
+
+#edit article
+@route('/edit/article/<id:int>')
+@login_required
+def edit_article(id, db):
+    current_username = request.session['username']
+    to_edit = db.query(article).filter(article.id==id).first()
+    return template('edit_article', username=current_username, article=to_edit)
+
+@route('/edit/article/<id:int>', method='POST')
+@login_required
+def save_edited(db, id):
+    title = request.forms.get('title')
+    body = request.forms.get('body')
+    author = request.session['username']
+    to_edit = db.query(article).filter(article.id==id).first()
+    to_edit.title = title
+    to_edit.body = body
+    to_edit.author = author
+    db.commit()
+    redirect('/')
+
+@route('/delete/article/<id:int>')
+@login_required
+def delete_article(id, db):
+    to_delete = db.query(article).filter(article.id==id).first()
+    db.delete(to_delete)
+    db.commit()
+    redirect('/')
+
+@route('/logout')
 def logout():
     if 'username' in request.session:
         request.session.delete()
         redirect('/login')
-		
+
 bottle.run(app=app, reloader=True, debug=True)
