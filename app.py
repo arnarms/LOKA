@@ -8,6 +8,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from uuid import uuid4
 import random
 
+from sys import argv
+
 Base = declarative_base()
 engine = create_engine('mysql+pymysql://1505982309:ZByy2vtJ7T7Rebmr@tsuts.tskoli.is/1505982309_lverk')
 
