@@ -23,6 +23,7 @@
         </ul>
         <ul class="navbar-nav ml-auto">
           % if defined('username'):
+          <li class="nav-item"><a class="nav-link text-capitalize" href="/new/article"><i class="fas fa-plus"></i> New Article </a></li>
           <li class="nav-item"><a class="nav-link text-capitalize" href="#"><i class="far fa-user"></i> {{ username }} </a></li>
           <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout </a></li>
           % else:
